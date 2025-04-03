@@ -20,7 +20,6 @@ Finally, recognizing the need for a user-friendly interface and data persistence
 ## Features
 
 - **PDF Support with AWS Textract**: Uploads PDFs to S3, runs Textract OCR, and processes the output for event data.
-- **Dynamic and Static Website Handling**: Detects whether a page is dynamically loaded and uses Selenium or requests accordingly.
 - **Event Section Identification**: Uses regex scoring and heuristics to extract the most relevant event container in HTML.
 - **Event Link Extraction & Filtering**: Extracts anchor tags and sends the list to an OpenAI model to eliminate irrelevant links.
 - **Date, Time, and Location Extraction**: Scans for patterns and navigates the DOM to return event-specific sections.
