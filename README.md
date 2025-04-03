@@ -3,7 +3,7 @@ Honours  Project - Emirali Gungor, Emre Bengu
 
 ## Overview
 
-This project aims to scrape event pages from various US school fair websites and extract structured information such as event dates, times, locations, and event-related links. The scraper currently requires a direct URL to the events page (not the homepage) since it does not yet implement a web crawler. The extracted data is stored in an organized directory structure, including both HTML content and screenshots.
+This project aims to scrape event pages from various US school fair websites and extract structured information such as event dates, times, locations, and event-related links. It also supports event extraction from PDF catalogs using OCR. The extracted data can be viewed or exported using a Flask web interface.
 
 ## Thought Process
 
@@ -11,134 +11,102 @@ When we started the project, we analyzed multiple websites (provided by our clie
 
 Next, we needed a method to accurately identify the event information section within a given website. We devised a weighted system based on event-related keywords, structured elements, and metadata such as schema.org annotations. This system helps us extract event-related sections even when websites structure their HTML differently. The function `extract_event_sections` was implemented for this purpose.
 
-During our tests, we observed that many event pages did not contain event details directly but instead provided links to individual event pages. This required us to extract all links from the identified event section and filter them to retain only relevant event pages. Initially, we experimented with multiple regex-based filtering techniques, but due to variations in website structures, it was difficult to standardize a universal regex pattern. As a result, we implemented the `cluster_links` function, which groups URLs based on common structural patterns. However, since this method does not eliminate all irrelevant links, we plan to incorporate an LLM to refine the filtering process while minimizing token usage to reduce costs.
+During our tests, we observed that many event pages did not contain event details directly but instead provided links to individual event pages. This required us to extract all links from the identified event section and filter them to retain only relevant event pages. Initially, we experimented with multiple regex-based filtering techniques, but due to variations in website structures, it was difficult to standardize a universal regex pattern. As a result, we implemented a system to extract all anchor tags and use an OpenAI LLM to determine which links are likely to point to individual event pages.
 
-Once we obtained the relevant event page links, we needed another function to extract event details such as date, time, and location. The `extract_date_location_sections` function was developed for this purpose. It first parses the HTML and removes irrelevant tags like scripts and images. Then, it scans for date, time, and location patterns using regex. When a match is found, it assigns a weighted score based on the presence of these elements. Unlike `extract_event_sections`, which focuses on broader event containers, this function moves up the DOM hierarchy to ensure the extracted information is complete and relevant. If multiple candidates are found, it selects the one with the highest score. This approach ensures we retrieve structured event details even from inconsistent HTML structures.
+We also realized that in some cases, the event information is embedded inside downloadable PDFs, typically as part of event catalogs or brochures. These PDFs are often shared by school organizations and contain comprehensive listings of upcoming events. Since these documents are not directly parseable via standard HTML techniques, we integrated AWS Textract, which allows us to perform OCR on PDFs. The text extracted from these PDFs is then sent to our OpenAI-powered pipeline, which extracts structured event details such as event name, date, time, location, and links.
 
-Finally, recognizing that some event details might be embedded in images, we implemented a directory system to store both HTML data and full-page screenshots. This allows us to perform OCR-based text extraction later if needed.
+Finally, recognizing the need for a user-friendly interface and data persistence, we developed a full-stack web application using Flask. The application includes user authentication, data management using SQLAlchemy, and support for viewing and exporting results.
 
 ## Features
 
-- **Dynamic and Static Website Handling**: Determines if a website loads dynamically or statically and scrapes it accordingly using Selenium (for dynamic sites) or Requests & BeautifulSoup (for static sites).
-    
-- **Event Section Identification**: Uses a weighted scoring system based on keywords, HTML structures, and schema.org event tags to extract event-related sections.
-    
-- **Event Link Extraction & Filtering**: Extracts event links from the identified event section and filters them using clustering techniques to remove unrelated links.
-    
-- **Date, Time, and Location Extraction**: Identifies event details and moves up the DOM tree to extract the relevant section.
-    
-- **Data Storage & Screenshots**: Saves extracted HTML, filtered event links, and full-page screenshots for future reference and OCR-based text extraction.
-    
-
-## Constraints
-
-- The provided URL must be the events page (not the homepage) because a site-wide crawler is not yet implemented.
-    
-- Many school fair websites load events dynamically, requiring Selenium for JavaScript execution.
-    
-- Some websites list events as links rather than inline details, requiring an additional step to visit and scrape these links.
-    
-- Regex-based link filtering is difficult due to the variety of website structures, so an LLM will be used for final filtering to minimize token costs.
-    
+- **PDF Support with AWS Textract**: Uploads PDFs to S3, runs Textract OCR, and processes the output for event data.
+- **Dynamic and Static Website Handling**: Detects whether a page is dynamically loaded and uses Selenium or requests accordingly.
+- **Event Section Identification**: Uses regex scoring and heuristics to extract the most relevant event container in HTML.
+- **Event Link Extraction & Filtering**: Extracts anchor tags and sends the list to an OpenAI model to eliminate irrelevant links.
+- **Date, Time, and Location Extraction**: Scans for patterns and navigates the DOM to return event-specific sections.
+- **LLM Integration with OpenAI**: All text (HTML or PDF) is passed to OpenAI models for final event data extraction.
+- **Web Interface with Flask**: Clean and responsive UI to scrape, review, and export data.
+- **Database Storage with SQLAlchemy**: Events and users are stored in a SQLite-backed schema with user-specific views.
 
 ## Implementation Details
 
-### 1. Identifying Website Type (Dynamic vs. Static)
+The architecture is modular and scalable. Here's a breakdown of the major implementation components and how each is handled across the pipeline.
 
-The function `is_dynamic(url)` checks if the webpage contains JavaScript-related elements such as `<script>` tags and `XMLHttpRequest`, indicating a dynamic page.
+---
 
-### 2. Directory Structure Setup
+### 1. Weighted Event Section Detection
 
-The `setup_directories(url)` function creates structured directories based on the domain name and current date to store extracted HTML and screenshots.
+We implemented a custom scoring system to identify HTML sections most likely to contain event information. This was necessary due to the wide variability in website structures.
 
-### 3. Web Scraping
+- The function `extract_event_sections(html_text)` loops through elements like `<div>`, `<section>`, `<article>`, `<li>`, and assigns scores based on several factors:
+  - Presence of **event-related keywords** (e.g., "schedule", "fair", "seminar")
+  - Presence of **date and time patterns** using regex
+  - Presence of **schema.org markup** like `itemtype='http://schema.org/Event'`
+  - Use of structural hints (e.g., parent containers, list nesting)
 
-- **Static Pages:** `scrape_static(url, is_main_url)` fetches the HTML content using `requests.get()`.
-    
-- **Dynamic Pages:** `scrape_dynamic(url, save_dir, is_main_url)` uses Selenium to render JavaScript, scroll the page, and take a screenshot before extracting the page source.
-    
+- Scores are aggregated up to 3 parent levels to capture container hierarchies.
+- The container with the highest cumulative score is selected as the likely event section.
+- This approach balances flexibility with precision and adapts well to diverse layouts.
 
-### 4. Extracting Event Sections
+### 2. PDF Extraction with AWS Textract
 
-The `extract_event_sections(html_text)` function:
+- `upload_file_to_s3(local_path, file_name)`:
+  Uploads a user-provided PDF to an S3 bucket.
 
-- Parses HTML using BeautifulSoup.
-    
-- Removes irrelevant tags (`script`, `style`, `img`, etc.).
-    
-- Uses a weighted scoring system to identify event-related containers based on:
-    
-    - Presence of event-related keywords (calendar, fair, conference, etc.).
-        
-    - Presence of dates and times.
-        
-    - Schema.org event metadata.
-        
-    - Structural elements (lists, tables, sections).
-        
-- Returns the highest-scoring container as the likely event section.
-    
+- `extract_text_from_pdf(document_name)`:
+  Initiates a Textract job and polls until it's complete. Extracts all LINE blocks and returns a cleaned string of text.
 
-### 5. Extracting Event Links
+### 2. LLM Pipeline (OpenAI API)
 
-The `extract_event_links(html, base_url)` function:
+All structured extraction is performed by OpenAI models (GPT-4o-mini). The following stages use LLMs:
 
-- Finds all `<a>` tags with `href` attributes.
-    
-- Converts relative URLs to absolute URLs.
-    
-- Filters links based on event-related keywords.
-    
-- Returns a list of potential event-related links.
-    
+- **Filtering Event Links**: After gathering raw `<a>` tags, we ask OpenAI to return indices of links that are not detail pages.
+- **Event Extraction from HTML Listings**: Once a listing section is cleaned, it is sent to OpenAI to parse events.
+- **Event Extraction from Detail Pages**: Each detail page's content is cleaned and sent to OpenAI.
+- **Event Extraction from PDFs**: The OCR-extracted text is sent to OpenAI with prompts tailored for unstructured data.
+- **Merging Listings + Detail Events**: OpenAI merges the two JSON results into a unified format.
 
-### 6. Filtering Event Links
+Key functions:
+- `llm_openai_from_textract_pdf(extracted_text)`
+- `llm_openai_get_event_links(list_of_links)`
+- `llm_openai_plain_text(text_from_listing)`
+- `llm_openai_dictionary(json_dict_from_detail_pages)`
+- `llm_openai_merger(detail_json, listing_json)`
 
-The `cluster_links(links)` function:
+Each function uses a purpose-specific prompt with strict formatting constraints to ensure the response is in JSON.
 
-- Groups URLs based on structural similarity (ignoring dynamic ID-like segments).
-    
-- Returns the most frequently occurring URL pattern.
-    
+### 3. Database Integration
 
-### 7. Extracting Date, Time, and Location
+We use SQLAlchemy to manage persistent data:
 
-The `extract_date_location_sections(html_text)` function:
+- **User Table**: Handles authentication with hashed passwords, unique emails, and timestamps.
+- **Event Table**: Stores event fields including name, date, time, city, state, URL, source URL, and timestamps.
+- Each user has access to their own set of saved events. Events can be added, updated, deleted, and exported.
 
-- Identifies date, time, and location-related content using regex.
-    
-- Scores sections based on relevance.
-    
-- Moves up the DOM tree to return the most complete event information.
-    
+Models:
+- `User` (username, email, password, events[])
+- `Event` (name, date, time, location, user_id, created_at)
 
-### 8. Processing Individual Event Pages
+### 4. Flask Web Application
 
-The `process_event_page(count, url, save_dir, is_main_function)` function:
+The web app provides a user interface for scraping and viewing events:
 
-- Scrapes each event link.
-    
-- Saves the extracted HTML and screenshot.
-    
+#### Routes:
+- `/`: Welcome page
+- `/signup`, `/login`, `/logout`: User auth routes
+- `/main`: Dashboard to input URLs or upload PDFs
+- `/process`: Accepts an event listing URL and begins scraping
+- `/upload-pdf`: Handles PDF upload, runs Textract, and passes text to OpenAI
+- `/events`: Table view of all stored events
+- `/event/<id>`: Individual event page
+- `/event/edit/<id>`: Update event fields
+- `/event/delete/<id>`: Remove an event
+- `/download/<filename>` and `/download_excel/<filename>`: Download event data
 
-### 9. Main Execution Flow
+#### HTML Rendering:
+- Clean Bootstrap-based templates for responsive layout.
+- Event results shown as cards or tables with interactive links.
 
-The `main(url)` function:
-
-1. Sets up the directory.
-    
-2. Scrapes the main event page.
-    
-3. Extracts and filters event links.
-    
-4. Visits each event link and extracts details.
-    
-5. Saves results to structured folders.
-
-## Future Improvements
-
-- Use an LLM to filter event links and sections more accurately while minimizing token usage.
-    
-- Implement OCR to extract text from screenshots when event details are embedded in images.
-	
-- Implement a crawler to find the events page automatically.
+#### Export Support:
+- Events can be downloaded as `.json` or `.xlsx`.
+- JSON output mirrors the structure returned by OpenAI.
