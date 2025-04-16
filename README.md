@@ -145,7 +145,7 @@ Usage:
 curl -X POST http://127.0.0.1:8000/extract-from-upload \
   -F "file=@screenshot.png"
 
-Use full path if you are not in the same folder as PDF
+*Use full path if you are not in the same folder as PDF*
 example: /home/emre/Documents/screenshot.png
 
 ---
@@ -177,7 +177,7 @@ Usage:
 curl -X POST http://127.0.0.1:8000/extract-pdf \
   -F "file=@pdf_file.pdf"
 
-Use full path if you are not in the same folder as PDF
+*Use full path if you are not in the same folder as PDF*
 example: /home/emre/Documents/pdf_file.pdf
 
 ---
