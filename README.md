@@ -116,6 +116,8 @@ In addition to the Flask interface, we implemented a separate FastAPI service fo
 
 Each route points to a specific file and backend function depending on the type of input (URL, image, PDF, or plain HTML).
 
+
+
 ---
 
 ### `POST /extract-screenshot`  
@@ -126,6 +128,11 @@ Each route points to a specific file and backend function depending on the type 
 - Extracts structured event data using AWS Textract and OpenAI if needed  
 - Returns a CSV with the results
 
+Usage: 
+curl -X POST http://127.0.0.1:8000/extract-screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://members.sacac.org/event-calendar"}'
+
 ---
 
 ### `POST /extract-from-upload`  
@@ -133,6 +140,13 @@ Each route points to a specific file and backend function depending on the type 
 **Use for:** Scraping events from a **user-uploaded screenshot/image file**.  
 - Designed for direct image uploads (e.g., PNGs)  
 - Performs the same processing as `/extract-screenshot`, but skips the URL screenshotting step
+
+Usage:
+curl -X POST http://127.0.0.1:8000/extract-from-upload \
+  -F "file=@screenshot.png"
+
+Use full path if you are not in the same folder as PDF
+example: /home/emre/Documents/screenshot.png
 
 ---
 
@@ -144,6 +158,11 @@ Each route points to a specific file and backend function depending on the type 
 - Uses OpenAI to extract structured data from listings and linked detail pages  
 - Merges both into a unified JSON format
 
+Usage:
+curl -X POST http://127.0.0.1:8000/extract-algo \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://members.sacac.org/event-calendar"}'
+
 ---
 
 ### `POST /extract-pdf`  
@@ -153,5 +172,12 @@ Each route points to a specific file and backend function depending on the type 
 - Runs an async Textract job to detect and extract lines  
 - Sorts and formats the result based on bounding boxes  
 - Sends the text to OpenAI to generate structured JSON of event data
+
+Usage:
+curl -X POST http://127.0.0.1:8000/extract-pdf \
+  -F "file=@pdf_file.pdf"
+
+Use full path if you are not in the same folder as PDF
+example: /home/emre/Documents/pdf_file.pdf
 
 ---
