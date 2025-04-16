@@ -109,3 +109,49 @@ The web app provides a user interface for scraping and viewing events:
 #### Export Support:
 - Events can be downloaded as `.json` or `.xlsx`.
 - JSON output mirrors the structure returned by OpenAI.
+
+## FastAPI Endpoints
+
+In addition to the Flask interface, we implemented a separate FastAPI service for programmatic access to the scraping tools. These endpoints are designed to support different workflows (e.g., triggering a scrape from a frontend, uploading a PDF, or using screenshots).
+
+Each route points to a specific file and backend function depending on the type of input (URL, image, PDF, or plain HTML).
+
+---
+
+### `POST /extract-screenshot`  
+**Points to:** `boto.py → main()`  
+**Use for:** Scraping events from a **URL** by taking a screenshot of the page.  
+- Captures a full-page screenshot using Selenium  
+- Uploads it to S3  
+- Extracts structured event data using AWS Textract and OpenAI if needed  
+- Returns a CSV with the results
+
+---
+
+### `POST /extract-from-upload`  
+**Points to:** `boto.py → main()`  
+**Use for:** Scraping events from a **user-uploaded screenshot/image file**.  
+- Designed for direct image uploads (e.g., PNGs)  
+- Performs the same processing as `/extract-screenshot`, but skips the URL screenshotting step
+
+---
+
+### `POST /extract-algo`  
+**Points to:** `main11.py → main()`  
+**Use for:** Scraping events using **HTML parsing and link crawling**.  
+- Fetches the HTML source of the provided URL  
+- Applies the `extract_event_sections` function to identify the most relevant content  
+- Uses OpenAI to extract structured data from listings and linked detail pages  
+- Merges both into a unified JSON format
+
+---
+
+### `POST /extract-pdf`  
+**Points to:** `pdf_extract_via_s3.py → extract_text_from_pdf()`  
+**Use for:** Uploading a **PDF catalog or event flyer** for OCR-based extraction.  
+- Uploads the PDF to S3  
+- Runs an async Textract job to detect and extract lines  
+- Sorts and formats the result based on bounding boxes  
+- Sends the text to OpenAI to generate structured JSON of event data
+
+---
