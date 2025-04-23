@@ -33,7 +33,7 @@ The architecture is modular and scalable. Here's a breakdown of the major implem
 
 ---
 
-### 1. Weighted Event Section Detection
+### 1. Weighted Event Section Detection ([algorithm_based_extraction.py](algorithm_based_extraction.py))
 
 We implemented a custom scoring system to identify HTML sections most likely to contain event information. This was necessary due to the wide variability in website structures.
 
@@ -47,15 +47,17 @@ We implemented a custom scoring system to identify HTML sections most likely to 
 - The container with the highest cumulative score is selected as the likely event section.
 - This approach balances flexibility with precision and adapts well to diverse layouts.
 
-### 2. PDF Extraction with AWS Textract
+### 2. PDF Extraction with AWS Textract ([extract_pdf.py](extract_pdf.py))
+
+This script manages the upload of a PDF to an S3 bucket and extracts its content using AWS Textract.
 
 - `upload_file_to_s3(local_path, file_name)`:
   Uploads a user-provided PDF to an S3 bucket.
 
 - `extract_text_from_pdf(document_name)`:
-  Initiates a Textract job and polls until it's complete. Extracts all LINE blocks and returns a cleaned string of text.
+  Launches a Textract job to analyze the PDF stored in S3. Once the job is complete, it gathers all `LINE` blocks, sorts them by their position on the page (top-to-bottom, left-to-right), and returns the structured text in a readable format.
 
-### 2. LLM Pipeline (OpenAI API)
+### 3. LLM Pipeline (OpenAI API) ([LLM_openai.py](LLM_openai.py))
 
 All structured extraction is performed by OpenAI models (GPT-4o-mini). The following stages use LLMs:
 
@@ -65,7 +67,7 @@ All structured extraction is performed by OpenAI models (GPT-4o-mini). The follo
 - **Event Extraction from PDFs**: The OCR-extracted text is sent to OpenAI with prompts tailored for unstructured data.
 - **Merging Listings + Detail Events**: OpenAI merges the two JSON results into a unified format.
 
-Key functions:
+Functions:
 - `llm_openai_from_textract_pdf(extracted_text)`
 - `llm_openai_get_event_links(list_of_links)`
 - `llm_openai_plain_text(text_from_listing)`
@@ -74,7 +76,7 @@ Key functions:
 
 Each function uses a purpose-specific prompt with strict formatting constraints to ensure the response is in JSON.
 
-### 3. Database Integration
+### 4. Database Integration ([database.py](database.py))
 
 We use SQLAlchemy to manage persistent data:
 
@@ -86,7 +88,7 @@ Models:
 - `User` (username, email, password, events[])
 - `Event` (name, date, time, location, user_id, created_at)
 
-### 4. Flask Web Application
+### 5. Flask Web Application ([app.py](app.py))
 
 The web app provides a user interface for scraping and viewing events:
 
@@ -110,18 +112,31 @@ The web app provides a user interface for scraping and viewing events:
 - Events can be downloaded as `.json` or `.xlsx`.
 - JSON output mirrors the structure returned by OpenAI.
 
-## FastAPI Endpoints
+### 6. HTML Keyword-Based Scraping ([html_keyword_scrape.py](html_keyword_scrape.py))
+
+This module handles event section extraction from HTML using keyword scoring.
+
+- `html_extractor(link)`  
+  Main function to scrape a page, identify event-relevant sections using keyword heuristics (e.g. "college fair", "schedule", "date", "location"), clean the extracted HTML, and return plain text.
+
+- Internals:
+  - Uses `Selenium` to fully load dynamic websites.
+  - Scores containers using a list of event-related keywords.
+  - Boosts scores for elements higher up in the DOM tree that contain many matched keywords.
+  - Applies additional noise reduction through functions like `remove_layout_noise()` and `remove_duplicate_lines()`.
+
+This function is called by the screenshot-based extraction system (`extract_via_image_processing.py`) to enhance LLM accuracy with relevant HTML text.
+
+## FastAPI Endpoints (fast_api.py)
 
 In addition to the Flask interface, we implemented a separate FastAPI service for programmatic access to the scraping tools. These endpoints are designed to support different workflows (e.g., triggering a scrape from a frontend, uploading a PDF, or using screenshots).
 
 Each route points to a specific file and backend function depending on the type of input (URL, image, PDF, or plain HTML).
 
-
-
 ---
 
-### `POST /extract-screenshot`  
-**Points to:** `boto.py → main()`  
+### `POST /extract-via-screenshot`  
+**Points to:** `extract_via_image_processing.py → main()`  
 **Use for:** Scraping events from a **URL** by taking a screenshot of the page.  
 - Captures a full-page screenshot using Selenium  
 - Uploads it to S3  
@@ -135,7 +150,7 @@ curl -X POST http://127.0.0.1:8000/extract-screenshot \
 
 ---
 
-### `POST /extract-from-upload`  
+### `POST /extract-manual-screenshot`  
 **Points to:** `boto.py → main()`  
 **Use for:** Scraping events from a **user-uploaded screenshot/image file**.  
 - Designed for direct image uploads (e.g., PNGs)  
@@ -150,8 +165,8 @@ example: /home/emre/Documents/screenshot.png
 
 ---
 
-### `POST /extract-algo`  
-**Points to:** `main11.py → main()`  
+### `POST /extract-via-algo`  
+**Points to:** `algorithm_based_extraction.py → main()`  
 **Use for:** Scraping events using **HTML parsing and link crawling**.  
 - Fetches the HTML source of the provided URL  
 - Applies the `extract_event_sections` function to identify the most relevant content  
@@ -166,7 +181,7 @@ curl -X POST http://127.0.0.1:8000/extract-algo \
 ---
 
 ### `POST /extract-pdf`  
-**Points to:** `pdf_extract_via_s3.py → extract_text_from_pdf()`  
+**Points to:** `extract_pdf.py → extract_text_from_pdf()`  
 **Use for:** Uploading a **PDF catalog or event flyer** for OCR-based extraction.  
 - Uploads the PDF to S3  
 - Runs an async Textract job to detect and extract lines  
