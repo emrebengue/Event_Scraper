@@ -133,6 +133,12 @@ In addition to the Flask interface, we implemented a separate FastAPI service fo
 
 Each route points to a specific file and backend function depending on the type of input (URL, image, PDF, or plain HTML).
 
+To run the FASTAPI Server (Python virtual environment is recommended) :
+  ```bash
+  pip install -r requirements.txt
+  uvicorn fast_api:app --reload
+  ```
+  
 ---
 
 ### `POST /extract-via-screenshot`  
