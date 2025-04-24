@@ -157,7 +157,7 @@ curl -X POST http://127.0.0.1:8000/extract-screenshot \
 ---
 
 ### `POST /extract-manual-screenshot`  
-**Points to:** `boto.py → main()`  
+**Points to:** `extract_via_image_processing.py → main()`  
 **Use for:** Scraping events from a **user-uploaded screenshot/image file**.  
 - Designed for direct image uploads (e.g., PNGs)  
 - Performs the same processing as `/extract-screenshot`, but skips the URL screenshotting step
