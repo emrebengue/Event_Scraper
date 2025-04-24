@@ -26,12 +26,16 @@ def home():
 # Runs extract_via_image_processing.py
 @app.post("/extract-via-screenshot")
 def extract_from_url_screenshot(request: ScrapeRequest):
-    csv_file = screenshot_main(request.url)
-    if not csv_file:
-        raise HTTPException(
-            status_code=400, detail="Screenshot-based extraction failed."
-        )
-    return {"message": "Scraping successful", "csv_file": os.path.basename(csv_file)}
+    try:
+        csv_file = screenshot_main(request.url)
+        if not csv_file:
+            raise HTTPException(status_code=400)
+        return {
+            "message": "Scraping successful",
+            "csv_file": os.path.basename(csv_file),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/extract-via-algo")
@@ -40,9 +44,7 @@ def extract_with_algo(request: ScrapeRequest):
         algo_main(request.url)
         return {"message": "Algorithm-based extraction complete."}
     except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"Algorithm extraction failed: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # extract_via_image_processing can also proccess manually taken Screenshot-based
@@ -62,6 +64,8 @@ def extract_from_uploaded_file(file: UploadFile = File(...)):
             "message": "Manual screenshot processing successful",
             "csv_file": os.path.basename(csv_file),
         }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
     finally:
         if os.path.exists(saved_file):
             os.remove(saved_file)
@@ -79,7 +83,7 @@ def extract_from_pdf_upload(file: UploadFile = File(...)):
 
         return {"message": "PDF processed successfully", "data": text}
     except Exception as e:
-        raise HTTPException(status_code=400)
+        raise HTTPException(status_code=400, detail=str(e))
     finally:
         if os.path.exists(local_path):
             os.remove(local_path)

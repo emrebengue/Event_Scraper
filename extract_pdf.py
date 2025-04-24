@@ -1,7 +1,6 @@
 import time
 import os
 from config import s3, textract, bucket_name_pdf, region
-import re
 from collections import defaultdict
 import json
 from openai import OpenAI

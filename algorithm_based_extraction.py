@@ -3,7 +3,6 @@ import os
 import re
 import time
 import json
-import requests
 
 # import tiktoken
 import pandas as pd
