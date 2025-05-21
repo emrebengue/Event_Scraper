@@ -153,6 +153,10 @@ Usage:
 curl -X POST http://127.0.0.1:8000/extract-via-screenshot \
   -H "Content-Type: application/json" \
   -d '{"url": "https://members.sacac.org/event-calendar"}'
+  
+Note: If you are copy/pasting the command from here make sure the entire command is on one line
+Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
+  
 ---
 
 ### `POST /extract-manual-screenshot`  
@@ -168,6 +172,9 @@ curl -X POST http://127.0.0.1:8000/extract-manual-screenshot \
 *Use full path if you are not in the same folder as PDF*
 example: /home/emre/Documents/screenshot.png
 
+Note: If you are copy/pasting the command from here make sure the entire command is on one line
+Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
+
 ---
 
 ### `POST /extract-via-algo`  
@@ -182,6 +189,9 @@ Usage:
 curl -X POST http://127.0.0.1:8000/extract-via-algo \
   -H "Content-Type: application/json" \
   -d '{"url": "https://members.sacac.org/event-calendar"}'
+
+Note: If you are copy/pasting the command from here make sure the entire command is on one line
+Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
 
 ---
 
@@ -199,5 +209,8 @@ curl -X POST http://127.0.0.1:8000/extract-pdf \
 
 *Use full path if you are not in the same folder as PDF*
 example: /home/emre/Documents/pdf_file.pdf
+
+Note: If you are copy/pasting the command from here make sure the entire command is on one line
+Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
 
 ---
