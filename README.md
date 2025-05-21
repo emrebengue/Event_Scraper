@@ -150,10 +150,9 @@ To run the FASTAPI Server (Python virtual environment is recommended) :
 - Returns a CSV with the results
 
 Usage: 
-curl -X POST http://127.0.0.1:8000/extract-screenshot \
+curl -X POST http://127.0.0.1:8000/extract-via-screenshot \
   -H "Content-Type: application/json" \
   -d '{"url": "https://members.sacac.org/event-calendar"}'
-
 ---
 
 ### `POST /extract-manual-screenshot`  
@@ -163,7 +162,7 @@ curl -X POST http://127.0.0.1:8000/extract-screenshot \
 - Performs the same processing as `/extract-screenshot`, but skips the URL screenshotting step
 
 Usage:
-curl -X POST http://127.0.0.1:8000/extract-from-upload \
+curl -X POST http://127.0.0.1:8000/extract-manual-screenshot \
   -F "file=@screenshot.png"
 
 *Use full path if you are not in the same folder as PDF*
@@ -180,7 +179,7 @@ example: /home/emre/Documents/screenshot.png
 - Merges both into a unified JSON format
 
 Usage:
-curl -X POST http://127.0.0.1:8000/extract-algo \
+curl -X POST http://127.0.0.1:8000/extract-via-algo \
   -H "Content-Type: application/json" \
   -d '{"url": "https://members.sacac.org/event-calendar"}'
 
