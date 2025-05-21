@@ -138,7 +138,6 @@ To run the FASTAPI Server (Python virtual environment is recommended) :
   pip install -r requirements.txt
   uvicorn fast_api:app --reload
   ```
-  
 ---
 
 ### `POST /extract-via-screenshot`  
@@ -150,13 +149,11 @@ To run the FASTAPI Server (Python virtual environment is recommended) :
 - Returns a CSV with the results
 
 Usage: 
+```
 curl -X POST http://127.0.0.1:8000/extract-via-screenshot \
   -H "Content-Type: application/json" \
   -d '{"url": "https://members.sacac.org/event-calendar"}'
-  
-Note: If you are copy/pasting the command from here make sure the entire command is on one line
-Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
-  
+```
 ---
 
 ### `POST /extract-manual-screenshot`  
@@ -166,14 +163,12 @@ Otherwise, make sure to add backslash (\) at the end of each line except the las
 - Performs the same processing as `/extract-screenshot`, but skips the URL screenshotting step
 
 Usage:
+```
 curl -X POST http://127.0.0.1:8000/extract-manual-screenshot \
   -F "file=@screenshot.png"
-
+```
 *Use full path if you are not in the same folder as PDF*
 example: /home/emre/Documents/screenshot.png
-
-Note: If you are copy/pasting the command from here make sure the entire command is on one line
-Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
 
 ---
 
@@ -186,13 +181,11 @@ Otherwise, make sure to add backslash (\) at the end of each line except the las
 - Merges both into a unified JSON format
 
 Usage:
+```
 curl -X POST http://127.0.0.1:8000/extract-via-algo \
   -H "Content-Type: application/json" \
   -d '{"url": "https://members.sacac.org/event-calendar"}'
-
-Note: If you are copy/pasting the command from here make sure the entire command is on one line
-Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
-
+```
 ---
 
 ### `POST /extract-pdf`  
@@ -204,13 +197,9 @@ Otherwise, make sure to add backslash (\) at the end of each line except the las
 - Sends the text to OpenAI to generate structured JSON of event data
 
 Usage:
+```
 curl -X POST http://127.0.0.1:8000/extract-pdf \
   -F "file=@pdf_file.pdf"
-
+```
 *Use full path if you are not in the same folder as PDF*
 example: /home/emre/Documents/pdf_file.pdf
-
-Note: If you are copy/pasting the command from here make sure the entire command is on one line
-Otherwise, make sure to add backslash (\) at the end of each line except the last line. 
-
----
